@@ -1,0 +1,13 @@
+.env
+.venv/
+.venv312/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.cache/
+documents/raw/
+documents/native/
+documents/scanned/
+documents/mixed/
+documents/processed/
+documents/logs/

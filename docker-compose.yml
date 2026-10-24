@@ -1,0 +1,16 @@
+services:
+  pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: rag_pgvector
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-${DB_USER:?Set POSTGRES_USER in .env}}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD:?Set POSTGRES_PASSWORD in .env}}
+      POSTGRES_DB: ${POSTGRES_DB:-${DB_NAME:?Set POSTGRES_DB in .env}}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+
+volumes:
+  pgvector_data:

@@ -1,0 +1,25 @@
+# Vector DB
+psycopg2-binary==2.9.9
+pgvector==0.3.6
+
+# Embeddings & Reranking
+FlagEmbedding==1.3.5
+transformers==4.51.3
+# Keep PyArrow compatible with the pinned NumPy 1.26 release.
+datasets==4.4.1
+pyarrow==23.0.1
+
+# PDF handling and page-level classification/extraction
+PyMuPDF>=1.24,<2
+
+# OCR (scanned pages)
+paddlepaddle==2.6.2
+paddleocr==2.9.1
+
+# Tokenizer-backed chunking comes from FlagEmbedding/transformers
+
+# Utilities
+python-dotenv==1.0.1
+tqdm==4.67.1
+numpy==1.26.4
+pytest>=8,<9
