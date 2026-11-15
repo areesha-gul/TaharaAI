@@ -1,0 +1,15 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.venv312/
+.env
+.streamlit/secrets.toml
+.git/
+.gitignore
+.cache/
+documents/raw/
+documents/native/
+documents/scanned/
+documents/mixed/
+documents/processed/
+documents/logs/

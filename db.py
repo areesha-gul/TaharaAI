@@ -31,6 +31,7 @@ def _get_pool():
             dbname=_required_setting("POSTGRES_DB", "DB_NAME"),
             user=_required_setting("POSTGRES_USER", "DB_USER"),
             password=_required_setting("POSTGRES_PASSWORD", "DB_PASSWORD"),
+            sslmode=os.getenv("DB_SSLMODE", "prefer"),
         )
     return _POOL
 

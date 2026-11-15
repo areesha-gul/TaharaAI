@@ -14,10 +14,26 @@ docker compose up -d
 
 Compose publishes PostgreSQL only on `127.0.0.1:${DB_PORT}`. If another local PostgreSQL already owns port 5432, use that database or choose another `DB_PORT`; do not point at an empty database unless you plan to re-index.
 
+### Use Supabase PostgreSQL
+
+For a shared hosted database, create a Supabase project and enable the `vector` extension in its dashboard. In the project's database connection settings, choose the Session pooler and copy its host, port, database, and username into your local `.env`. Set `DB_SSLMODE=require` and use the database password from Supabase. Keep `.env` and these credentials private; do not put them in the browser or commit them to Git. The app server and the machine running indexing must use the same connection settings.
+
+Then initialize the schema:
+
+```bash
+.venv/bin/python db.py
+```
+
+To populate the shared database, put source PDFs in `documents/raw/` and run the processing and indexing commands below. If you already have processed JSON under `documents/processed/`, you can run only `indexer.py` after configuring Supabase; it will embed those documents and write their chunks to the hosted database. This indexing step can take time and downloads the embedding model locally.
+
+Use the Supabase database credentials only in trusted server-side environments. Choose a plan with backups, availability, and capacity appropriate for your users and documents; free-tier limits can change.
+
 Install packages:
 
 ```bash
-.venv/bin/pip install -r requirements.txt
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
 ```
 
 For OCR, PaddleOCR also needs its supported system dependencies. The extraction code uses PyMuPDF for page classification, native text, and OCR page rendering. OCR failures are recorded per page; they do not abort later pages.
@@ -39,6 +55,8 @@ Initialize or migrate the database schema:
 The migration adds page/section provenance arrays, metadata columns, full-text columns, GIN indexes, and a document-chunk uniqueness constraint. It removes duplicate rows with identical `(doc_name, page_num, chunk_index)` while retaining the newest row. Existing embeddings remain valid, but existing chunks lack the new metadata and may use page-local chunk indexes. Re-index processed documents to populate the new chunking and metadata. Indexing replaces each document's rows atomically and is safe to repeat. Before migrating a populated database, take a backup; then run `python db.py` and `python indexer.py`. The schema migration and re-index are deliberately separate operations.
 
 ## PDF processing and indexing
+
+The repository does not include the document corpus or a populated database. `documents/raw/`, `documents/processed/`, and the local PostgreSQL volume are not shared by cloning the repository. Each user must supply PDFs and index them into their own database; without that, the UI has no source documents to search.
 
 Put source PDFs in `documents/raw/`, then run:
 
@@ -63,15 +81,31 @@ Indexing uses the BGE-M3 tokenizer, a target of 300 tokens, 45-token overlap, an
 
 A few known filenames have built-in standard/edition/document-kind mappings; top-level metadata in the processed JSON or `metadata.json` overrides those values. PDF extraction `kind` (`native`, `scanned`, `mixed`) is kept separate and is not confused with semantic `doc_kind`.
 
-## Simple UI
+## Streamlit UI
 
-A lightweight browser UI is included at `ui/index.html`. Start it with:
+Run the app locally with:
 
 ```bash
-.venv/bin/python ui_server.py
+.venv/bin/python -m streamlit run streamlit_app.py
 ```
 
-Then open <http://localhost:8000> in your browser. The page lets you ask a question and shows the generated answer plus source references.
+Streamlit opens the app in your browser. The sidebar selects dense or hybrid retrieval and optionally enables reranking. Answers include expandable source excerpts and citation warnings.
+
+To deploy on Streamlit Community Cloud, select this repository and `streamlit_app.py` as the app entrypoint. Add the database and model settings from `.env` to the app's **Secrets** settings as TOML key-value entries. For example:
+
+```toml
+DB_HOST = "your-session-pooler-host"
+DB_PORT = "5432"
+DB_SSLMODE = "require"
+DB_NAME = "postgres"
+DB_USER = "your-session-pooler-user"
+DB_PASSWORD = "your-database-password"
+LLM_BASE_URL = "https://your-openai-compatible-endpoint/v1"
+LLM_MODEL = "your-model-name"
+LLM_API_KEY = "your-api-key"
+```
+
+Keep secrets in Streamlit's settings, never in the repository. The app host must be able to reach both Supabase and the configured LLM endpoint. The current local Ollama URL will not work from a cloud app unless Ollama is hosted at a reachable endpoint. Check the hosting plan's memory and request-time limits: this app loads BGE-M3 locally for query embeddings, which can be resource-intensive.
 
 On Windows, use a Python 3.12 virtual environment and redirect package temporary files to it (the UI also stores model caches under the active virtual environment):
 
@@ -81,7 +115,7 @@ New-Item -ItemType Directory -Force .venv312\temp | Out-Null
 $env:TEMP = "$PWD\.venv312\temp"
 $env:TMP = $env:TEMP
 .\.venv312\Scripts\python.exe -m pip install --no-cache-dir -r requirements.txt
-.\.venv312\Scripts\python.exe ui_server.py
+.\.venv312\Scripts\python.exe -m streamlit run streamlit_app.py
 ```
 
 ## Querying
@@ -112,8 +146,6 @@ print(result["sources"])
 hits = search("A.5.15 access rights", mode="hybrid", use_reranker=True)
 ```
 
-Citation labels support `[S1]` and grouped form `[S1, S2]`. Invalid labels are replaced and returned as warnings; paragraphs without citations are reported. Model output is not a legal opinion or proof of compliance. Verify clauses against the source edition and applicable scope.
-
 ## Retrieval evaluation
 
 Add one JSON object per line to `eval/questions.jsonl`:
@@ -139,6 +171,7 @@ The report includes recall@5 and MRR. Leave the file empty until you have verifi
 | `POSTGRES_PASSWORD` | set in `.env` | PostgreSQL password |
 | `DB_HOST` | `localhost` | Database host |
 | `DB_PORT` | `5432` | Host port |
+| `DB_SSLMODE` | `prefer` | PostgreSQL SSL mode; use `require` for Supabase |
 | `DB_POOL_MIN` / `DB_POOL_MAX` | `1` / `10` | Threaded connection-pool bounds |
 | `EMBED_MODEL` | `BAAI/bge-m3` | Embedding and tokenizer model |
 | `RERANK_MODEL` | `BAAI/bge-reranker-v2-m3` | Cross-encoder model |

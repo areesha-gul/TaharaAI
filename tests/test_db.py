@@ -19,6 +19,25 @@ def test_legacy_database_env_names_remain_supported(monkeypatch):
     assert db._required_setting("POSTGRES_USER", "DB_USER") == "local-user"
 
 
+def test_database_pool_uses_configured_sslmode(monkeypatch):
+    settings = {}
+
+    class FakePool:
+        def __init__(self, **kwargs):
+            settings.update(kwargs)
+
+    monkeypatch.setattr(db, "ThreadedConnectionPool", FakePool)
+    monkeypatch.setenv("POSTGRES_DB", "test-db")
+    monkeypatch.setenv("POSTGRES_USER", "test-user")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "test-password")
+    monkeypatch.setenv("DB_SSLMODE", "require")
+    monkeypatch.setattr(db, "_POOL", None)
+
+    db._get_pool()
+
+    assert settings["sslmode"] == "require"
+
+
 def test_clause_pattern_matches_exact_id_not_longer_prefix():
     pattern = db._clause_patterns(["A.5.15"])[0]
 
