@@ -1,5 +1,5 @@
 # Vector DB
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.9; python_version < "3.14"
 pgvector==0.3.6
 
 # Embeddings & Reranking
@@ -12,9 +12,10 @@ pyarrow==23.0.1
 # PDF handling and page-level classification/extraction
 PyMuPDF>=1.24,<2
 
-# OCR (scanned pages)
-paddlepaddle==2.6.2
-paddleocr==2.9.1
+# OCR (scanned pages). These packages do not provide wheels for Python 3.14,
+# so the deployment runtime should be pinned to Python 3.12 instead.
+paddlepaddle==2.6.2; python_version < "3.13"
+paddleocr==2.9.1; python_version < "3.13"
 
 # Tokenizer-backed chunking comes from FlagEmbedding/transformers
 
